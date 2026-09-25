@@ -1,0 +1,19 @@
+## Interface: 16001
+## Title: NBPartyFrames
+## Notes: Customizable Blizzard party frames with class colors, scaling, and positioning
+## Author: Nightbert
+## Version: 1.0.0
+## IconTexture: Interface\Icons\Achievement_GuildPerk_EverybodysFriend
+## SavedVariables: NBPartyFramesDB, NBPartyFramesProfilesDB
+## SavedVariablesPerCharacter: NBPartyFramesCharDB
+
+Libs\LibStub\LibStub.lua
+Libs\AceSerializer-3.0\AceSerializer-3.0.lua
+Libs\LibDeflate\LibDeflate.lua
+
+NBPartyFrames.lua
+NBProfiles.lua
+NBFrames.lua
+NBGroupWindow.lua
+NBGrid.lua
+NBSettings.lua
