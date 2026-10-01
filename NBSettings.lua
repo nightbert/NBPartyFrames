@@ -8,6 +8,8 @@ local ICON_UNITFRAMES = "Interface\\Icons\\INV_Misc_GroupNeedMore"
 local ICON_GRID = "Interface\\Icons\\INV_Misc_Map_01"
 local ICON_PROFILE = "Interface\\Icons\\INV_Misc_Note_06"
 local classColorsCheckbox
+local partyPetsCheckbox
+local playerPartyCheckbox
 
 local function CreateSettingsCheckbox(parent, label, dbKey, xOffset, yOffset, onChange)
 	local checkbox = CreateFrame("CheckButton", nil, parent, "InterfaceOptionsCheckButtonTemplate")
@@ -49,6 +51,13 @@ local function BuildSettings(box, yOffset)
 		NBPartyFrames.ApplyUnitFrameColours()
 		NBPartyFrames.ApplyPartyFramePreview()
 	end)
+	partyPetsCheckbox = CreateSettingsCheckbox(box, "Show party pets", "showPartyPets", 150, yOffset, function()
+		NBPartyFrames.ApplyPartyPetVisibility()
+	end)
+	playerPartyCheckbox = CreateSettingsCheckbox(box, "Show player in party", "showPlayerInParty", 16, yOffset - 26, function()
+		NBPartyFrames.ApplyPlayerPartyFrame()
+	end)
+
 	local scaleLabel = box:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
 	scaleLabel:SetPoint("TOPLEFT", 286, yOffset - 2)
 	local function RefreshScaleLabel()
@@ -76,7 +85,7 @@ local function BuildSettings(box, yOffset)
 		RefreshScaleLabel()
 		NBPartyFrames.ApplyPartyFrameScale()
 	end)
-	yOffset = yOffset - 46
+	yOffset = yOffset - 66
 
 	NBPartyFrames.RefreshPartyFrameSettings = function()
 		scaleSlider:SetValue(NBPartyFramesDB.partyFrameScale)
@@ -281,6 +290,8 @@ local function CreateSettingsPanel()
 
 	function NBPartyFrames.RefreshSettingsPanels()
 		classColorsCheckbox:SetChecked(NBPartyFramesDB.classColorHealth)
+		partyPetsCheckbox:SetChecked(NBPartyFramesDB.showPartyPets)
+		playerPartyCheckbox:SetChecked(NBPartyFramesDB.showPlayerInParty)
 		NBPartyFrames.RefreshPartyFrameSettings()
 		NBPartyFrames.RefreshGroupWindowSettings()
 		NBPartyFrames.RefreshEditModeSettings()

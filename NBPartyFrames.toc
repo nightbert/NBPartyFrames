@@ -2,7 +2,7 @@
 ## Title: NBPartyFrames
 ## Notes: Customizable Blizzard party frames with class colors, scaling, and positioning
 ## Author: Nightbert
-## Version: 1.0.0
+## Version: 1.0.1
 ## IconTexture: Interface\Icons\Achievement_GuildPerk_EverybodysFriend
 ## SavedVariables: NBPartyFramesDB, NBPartyFramesProfilesDB
 ## SavedVariablesPerCharacter: NBPartyFramesCharDB

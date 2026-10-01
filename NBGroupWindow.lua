@@ -38,6 +38,8 @@ local attachCheckbox
 local orientationButtons
 local spacingLabel, spacingSlider
 local menu, menuCatcher
+local playerPartyFrame
+local pendingPlayerPartyFrameApply
 
 local function ApplyDefaults(destination, source)
 	if type(destination) ~= "table" then
@@ -57,6 +59,144 @@ end
 
 local function PartyMemberFrame(index)
 	return PartyFrame["MemberFrame" .. index]
+end
+local PLAYER_PARTY_FRAME_EVENTS = {
+	"UNIT_NAME_UPDATE",
+	"UNIT_DISPLAYPOWER",
+	"UNIT_PORTRAIT_UPDATE",
+	"PORTRAITS_UPDATED",
+	"PLAYER_ENTERING_WORLD",
+	"GROUP_ROSTER_UPDATE",
+	"PARTY_LEADER_CHANGED",
+	"PARTY_LOOT_METHOD_CHANGED",
+	"UNIT_FACTION",
+	"UNIT_CONNECTION",
+	"UNIT_FLAGS",
+	"UNIT_PHASE",
+	"UNIT_CTR_OPTIONS",
+	"UNIT_OTHER_PARTY_CHANGED",
+	"INCOMING_SUMMON_CHANGED",
+	"READY_CHECK",
+	"READY_CHECK_CONFIRM",
+	"READY_CHECK_FINISHED",
+}
+
+local function RefreshPlayerPartyFrame(frame)
+	UnitFrame_Update(frame, true)
+	frame:UpdateLeader()
+	frame:UpdateAssignedRoles()
+	frame:UpdatePvPStatus()
+	frame:UpdateAuras()
+	frame:UpdateReadyCheck()
+	frame:UpdateOnlineStatus()
+	frame:UpdateNotPresentIcon()
+	if not InCombatLockdown() then
+		frame:UpdatePet()
+	end
+end
+
+local function PlayerPartyFrameOnEvent(self, event, ...)
+	local unit, updateInfo = ...
+	UnitFrame_OnEvent(self, event, ...)
+
+	if event == "UNIT_AURA" then
+		if unit == "player" then
+			self:UpdateAuras(updateInfo)
+		elseif unit == "pet" then
+			self.PetFrame:UpdateAuras(updateInfo)
+		end
+	elseif event == "UNIT_PET" then
+		if not InCombatLockdown() then
+			self:UpdatePet()
+		end
+	elseif event == "UNIT_FACTION" then
+		if unit == "player" then
+			self:UpdatePvPStatus()
+		end
+	elseif event == "UNIT_CONNECTION" then
+		if unit == "player" then
+			self:UpdateOnlineStatus()
+		end
+	elseif event == "PARTY_LEADER_CHANGED" then
+		self:UpdateLeader()
+	elseif event == "READY_CHECK"
+		or event == "READY_CHECK_CONFIRM"
+		or event == "READY_CHECK_FINISHED"
+	then
+		self:UpdateReadyCheck()
+	elseif event == "UNIT_FLAGS"
+		or event == "UNIT_PHASE"
+		or event == "UNIT_CTR_OPTIONS"
+		or event == "UNIT_OTHER_PARTY_CHANGED"
+		or event == "INCOMING_SUMMON_CHANGED"
+	then
+		if not unit or unit == "player" then
+			self:UpdateNotPresentIcon()
+		end
+	elseif event == "PLAYER_ENTERING_WORLD" or event == "GROUP_ROSTER_UPDATE" then
+		RefreshPlayerPartyFrame(self)
+	end
+end
+
+local function CreatePlayerPartyFrame()
+	local frame = CreateFrame("Button", "NBPartyFramesPlayerPartyFrame", PartyFrame, "PartyMemberFrameTemplate")
+	frame:SetParentKey("MemberFrame5")
+	frame:SetPoint("TOPLEFT")
+	frame.layoutIndex = PARTY_MEMBER_COUNT
+	frame:Setup()
+	frame:UnregisterAllEvents()
+
+	frame.unitToken = "player"
+	frame.petUnitToken = "pet"
+	frame.PetFrame.unitToken = "pet"
+	UnitFrame_SetUnit(frame, "player", frame.HealthBarContainer.HealthBar, frame.ManaBar)
+	UnitFrame_SetUnit(frame.PetFrame, "pet", frame.PetFrame.HealthBar)
+	UnitPowerBarAlt_Initialize(frame.PowerBarAlt, "player", 0.5, "GROUP_ROSTER_UPDATE")
+
+	frame:SetScript("OnEvent", PlayerPartyFrameOnEvent)
+	for _, event in ipairs(PLAYER_PARTY_FRAME_EVENTS) do
+		frame:RegisterEvent(event)
+	end
+	frame:RegisterUnitEvent("UNIT_AURA", "player", "pet")
+	frame:RegisterUnitEvent("UNIT_PET", "player", "pet")
+	frame:RegisterUnitEvent("UNIT_HEAL_ABSORB_AMOUNT_CHANGED", "player")
+	frame:RegisterUnitEvent("UNIT_MAX_HEALTH_MODIFIERS_CHANGED", "player")
+
+	frame:ToPlayerArt()
+	RefreshPlayerPartyFrame(frame)
+	playerPartyFrame = frame
+	return frame
+end
+
+function NBPartyFrames.ApplyPlayerPartyFrame()
+	if InCombatLockdown() then
+		pendingPlayerPartyFrameApply = true
+		if NBPartyFrames.ApplyPartyFramePreview then
+			NBPartyFrames.ApplyPartyFramePreview()
+		end
+		return
+	end
+	pendingPlayerPartyFrameApply = nil
+
+	if NBPartyFramesDB.showPlayerInParty then
+		local frame = playerPartyFrame or CreatePlayerPartyFrame()
+		RegisterStateDriver(frame, "visibility", "[group:party] show; hide")
+		RefreshPlayerPartyFrame(frame)
+		if NBPartyFrames.ApplyUnitFrameColours then
+			NBPartyFrames.ApplyUnitFrameColours()
+		end
+	elseif playerPartyFrame then
+		UnregisterStateDriver(playerPartyFrame, "visibility")
+		playerPartyFrame:Hide()
+		playerPartyFrame.PetFrame:Hide()
+	end
+
+	if NBPartyFrames.ApplyPartyMemberFramePositions then
+		NBPartyFrames.ApplyPartyMemberFramePositions()
+	end
+	if NBPartyFrames.ApplyPartyFramePreview then
+		NBPartyFrames.ApplyPartyFramePreview()
+	end
 end
 
 local function IsAttached()
@@ -304,7 +444,7 @@ local function CreateAnchor(index)
 	name:SetPoint("TOPLEFT", 41, -4)
 	name:SetPoint("TOPRIGHT", anchor, "TOPRIGHT", -5, -4)
 	name:SetJustifyH("LEFT")
-	name:SetText("Party #" .. index)
+	name:SetText(index == PARTY_MEMBER_COUNT and "Player" or "Party #" .. index)
 
 	anchor:SetScript("OnDragStart", function(self)
 		CloseMenu()
@@ -325,7 +465,7 @@ local function CreateAnchor(index)
 	end)
 	anchor:SetScript("OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-		GameTooltip:SetText("Party member " .. index)
+		GameTooltip:SetText(index == PARTY_MEMBER_COUNT and "Player" or "Party member " .. index)
 		if IsAttached() then
 			GameTooltip:AddLine("Drag: move group", 1, 1, 1)
 		else
@@ -350,6 +490,7 @@ local function RefreshAnchor(index, anchor)
 end
 
 function NBPartyFrames.ApplyPartyFramePreview()
+	local previewShown = anchors[1] and anchors[1]:IsShown()
 	for index = 1, PARTY_MEMBER_COUNT do
 		if anchors[index] then
 			RefreshAnchor(index, anchors[index])
@@ -361,6 +502,7 @@ function NBPartyFrames.ApplyPartyFramePreview()
 	for index = 1, PARTY_MEMBER_COUNT do
 		if anchors[index] then
 			PositionAnchor(index, anchors[index], positions)
+			anchors[index]:SetShown(previewShown and (index < PARTY_MEMBER_COUNT or NBPartyFramesDB.showPlayerInParty))
 		end
 	end
 end
@@ -368,7 +510,7 @@ end
 local function ShowPreview()
 	for index = 1, PARTY_MEMBER_COUNT do
 		local anchor = CreateAnchor(index)
-		anchor:Show()
+		anchor:SetShown(index < PARTY_MEMBER_COUNT or NBPartyFramesDB.showPlayerInParty)
 	end
 	NBPartyFrames.ApplyPartyFramePreview()
 	UpdatePreviewButton()
@@ -709,10 +851,14 @@ eventFrame:SetScript("OnEvent", function(self, event, addonName)
 		NBPartyFrames.ApplyGroupWindowDefaults()
 		NBPartyFrames.RegisterEditModeHandler(ApplyEditMode)
 	elseif event == "PLAYER_LOGIN" then
+		NBPartyFrames.ApplyPlayerPartyFrame()
 		HookPartyMemberFrames()
 		NBPartyFrames.ApplyPartyMemberFramePositions()
 		ApplyEditMode()
 	elseif event == "PLAYER_REGEN_ENABLED" then
+		if pendingPlayerPartyFrameApply then
+			NBPartyFrames.ApplyPlayerPartyFrame()
+		end
 		if pendingRevert then
 			RevertPartyMemberLayout()
 		elseif pendingApply then
@@ -723,6 +869,7 @@ eventFrame:SetScript("OnEvent", function(self, event, addonName)
 		or event == "UI_SCALE_CHANGED"
 	then
 		C_Timer.After(0, function()
+			NBPartyFrames.ApplyPlayerPartyFrame()
 			HookPartyMemberFrames()
 			NBPartyFrames.ApplyPartyMemberFramePositions()
 		end)

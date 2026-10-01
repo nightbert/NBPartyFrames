@@ -5,6 +5,8 @@ NBPartyFrames enhances Blizzard's default unit and party frames while keeping th
 ## Features
 
 - Optional class colors for player, pet, target, focus, and party health bars
+- Toggleable party-pet frames (enabled by default)
+- Optional fifth party frame for the player
 - Party frame scaling from 50% to 150%
 - Independent positioning of all five party member frames
 - Attached horizontal or vertical party layouts with adjustable spacing
@@ -51,7 +53,7 @@ The alignment grid can be toggled independently of edit mode with **Show grid** 
 
 ### Profiles
 
-Profiles store all addon settings, including frame positions, scale, layout, visibility, class colors, edit mode, grid visibility, and grid spacing.
+Profiles store all addon settings, including frame positions, scale, layout, player and party-pet visibility, class colors, edit mode, grid visibility, and grid spacing.
 
 - **Save** creates or updates the profile entered in the profile-name field.
 - **Load** applies the selected profile.

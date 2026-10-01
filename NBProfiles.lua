@@ -367,6 +367,8 @@ function NBPartyFrames.LoadProfile(name)
 
 	NBPartyFrames.ApplyUnitFrameColours()
 	NBPartyFrames.ApplyPartyFrameScale()
+	NBPartyFrames.ApplyPartyPetVisibility()
+	NBPartyFrames.ApplyPlayerPartyFrame()
 	NBPartyFrames.ApplyPartyFrameVisibility()
 	NBPartyFrames.ApplyPartyMemberFramePositions()
 	NBPartyFrames.ApplyPartyFramePreview()
